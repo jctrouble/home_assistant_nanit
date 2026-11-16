@@ -374,7 +374,7 @@ func (app *App) createHybridPool(babyUID string, conn *client.WebsocketConnectio
 		OnAuthFailed:   app.onAuthFailed,
 		Pacer:          pacer,
 
-		DisableRemoteStandby:  app.Opts.RTMP.DisableRemoteStandby,
+		DisableRemoteRelay:    app.Opts.RTMP.DisableRemoteRelay,
 		DisableSessionRelease: app.Opts.RTMP != nil && app.Opts.RTMP.DisableSessionRelease,
 	})
 }
