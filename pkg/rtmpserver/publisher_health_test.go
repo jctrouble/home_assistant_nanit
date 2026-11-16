@@ -1,6 +1,7 @@
 package rtmpserver
 
 import (
+	"errors"
 	"net"
 	"testing"
 	"time"
@@ -79,11 +80,19 @@ func TestLocalPublisherLeaving_PublishesUnhealthyOnlyWhenLast(t *testing.T) {
 	_, nc1 := publish(t, addr, uid)
 	waitRegistered(1)
 	_, nc2 := publish(t, addr, uid)
-	waitRegistered(2)
 	require.Eventually(t, func() bool { return streamState(sm, uid) == baby.StreamState_Alive }, 3*time.Second, 5*time.Millisecond)
 
-	// One of two publishers leaves: still Alive.
-	nc1.Close()
+	// The newer publisher replaces the older one: the server closes the older
+	// connection, one publisher remains, and the stream stays Alive.
+	require.NoError(t, nc1.SetReadDeadline(time.Now().Add(3*time.Second)))
+	buf := make([]byte, 1024)
+	for {
+		if _, err := nc1.Read(buf); err != nil {
+			var netErr net.Error
+			require.False(t, errors.As(err, &netErr) && netErr.Timeout(), "the server must close the older publisher")
+			break
+		}
+	}
 	waitRegistered(1)
 	time.Sleep(50 * time.Millisecond)
 	assert.Equal(t, baby.StreamState_Alive, streamState(sm, uid), "a publisher leaving while another remains must not publish Unhealthy")
