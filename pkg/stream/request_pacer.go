@@ -7,9 +7,9 @@ import (
 
 // Default pacing for local stream requests
 const (
-	minLocalRetryInterval = 30 * time.Second // Minimum time between local stream requests
-	initialLocalBackoff   = 10 * time.Second // Backoff after the first request
-	maxLocalBackoff       = 2 * time.Minute  // Maximum backoff
+	defaultMinInterval    = 30 * time.Second // Minimum time between local stream requests
+	defaultInitialBackoff = 10 * time.Second // Backoff after the first request
+	defaultMaxBackoff     = 2 * time.Minute  // Maximum backoff
 	defaultStableWindow   = 60 * time.Second // Local must be healthy this long to reset the backoff
 )
 
@@ -38,13 +38,13 @@ type RequestPacer struct {
 // NewRequestPacer creates a RequestPacer
 func NewRequestPacer(cfg RequestPacerConfig) *RequestPacer {
 	if cfg.MinInterval == 0 {
-		cfg.MinInterval = minLocalRetryInterval
+		cfg.MinInterval = defaultMinInterval
 	}
 	if cfg.InitialBackoff == 0 {
-		cfg.InitialBackoff = initialLocalBackoff
+		cfg.InitialBackoff = defaultInitialBackoff
 	}
 	if cfg.MaxBackoff == 0 {
-		cfg.MaxBackoff = maxLocalBackoff
+		cfg.MaxBackoff = defaultMaxBackoff
 	}
 	if cfg.StableWindow == 0 {
 		cfg.StableWindow = defaultStableWindow
