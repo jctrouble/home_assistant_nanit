@@ -51,7 +51,8 @@ type rtmpHandler struct {
 
 	// Track active local publishers count to detect reconnections vs drops
 	localPublishersMu sync.RWMutex
-	localPublishers   map[string]int // count of active publishers per baby
+	localPublishers   map[string]int       // count of active publishers per baby
+	lastLocalConnect  map[string]time.Time // when a local publisher last connected, per baby
 
 	// Current (newest) publisher connection per stream key
 	currentPublishersMu sync.Mutex
@@ -270,6 +271,14 @@ func (srv *RTMPServer) WaitForPublisher(babyUID string, timeout time.Duration) e
 	}
 }
 
+// LocalPublisherConnectedAt returns when a local publisher last connected for
+// the baby, or the zero time if none has.
+func (srv *RTMPServer) LocalPublisherConnectedAt(babyUID string) time.Time {
+	srv.handler.localPublishersMu.RLock()
+	defer srv.handler.localPublishersMu.RUnlock()
+	return srv.handler.lastLocalConnect[babyUID]
+}
+
 // ErrPublisherTimeout is returned when waiting for publisher times out
 var ErrPublisherTimeout = net.UnknownNetworkError("publisher connection timeout")
 
@@ -336,6 +345,7 @@ func newRtmpHandler(babyStateManager *baby.StateManager) *rtmpHandler {
 		publisherWaitCh:   make(map[string]chan struct{}),
 		localPublishers:   make(map[string]int),
 		currentPublishers: make(map[string]net.Conn),
+		lastLocalConnect:  make(map[string]time.Time),
 	}
 }
 
@@ -463,8 +473,11 @@ func (s *rtmpHandler) registerLocalPublisher(babyUID, slotSuffix, streamKey stri
 	s.localPublishersMu.Lock()
 	s.localPublishers[babyUID]++
 	count := s.localPublishers[babyUID]
+	s.lastLocalConnect[babyUID] = time.Now()
 	// Also track by streamKey for pool-aware lookups
-	s.localPublishers[streamKey]++
+	if streamKey != babyUID {
+		s.localPublishers[streamKey]++
+	}
 	s.localPublishersMu.Unlock()
 
 	log.Info().Str("baby_uid", babyUID).Str("stream_key", streamKey).Int("active_count", count).Msg("Local publisher registered")
@@ -490,9 +503,11 @@ func (s *rtmpHandler) unregisterLocalPublisher(babyUID, streamKey string) int {
 		remaining = 0
 	}
 	// Also decrement streamKey count
-	s.localPublishers[streamKey]--
-	if s.localPublishers[streamKey] <= 0 {
-		delete(s.localPublishers, streamKey)
+	if streamKey != babyUID {
+		s.localPublishers[streamKey]--
+		if s.localPublishers[streamKey] <= 0 {
+			delete(s.localPublishers, streamKey)
+		}
 	}
 	s.localPublishersMu.Unlock()
 
