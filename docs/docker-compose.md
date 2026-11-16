@@ -127,6 +127,7 @@ See [.env.sample](../.env.sample) for all available options with descriptions.
 | `NANIT_RTMP_ADDR` | (auto-detect) | Local IP:port for RTMP server |
 | `NANIT_RTMP_PORT` | `1935` | RTMP port |
 | `NANIT_REMOTE_STANDBY` | `true` | Cloud stream as hot standby; `false` leaves no fallback when local fails |
+| `NANIT_SESSION_RELEASE` | `true` | After the camera refuses a stream request because of its connection limit, send a stop for the bridge's own stream URL and try one more time. Set to false to turn this off. |
 | `NANIT_PREFER_REMOTE` | `false` | No effect (deprecated) |
 | `NANIT_MQTT_ENABLED` | `false` | Enable MQTT |
 | `NANIT_MQTT_BROKER_URL` | - | MQTT broker URL |
